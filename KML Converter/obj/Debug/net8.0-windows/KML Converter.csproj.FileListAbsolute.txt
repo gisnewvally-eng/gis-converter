@@ -1,0 +1,17 @@
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\KML Converter.GeneratedMSBuildEditorConfig.editorconfig
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\KML Converter.AssemblyInfoInputs.cache
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\KML Converter.AssemblyInfo.cs
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\KML Converter.csproj.CoreCompileInputs.cache
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\KML Converter.genruntimeconfig.cache
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\GISUniversalConverterPro.Localization.Strings.resources
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\KML Converter.csproj.GenerateResource.cache
+D:\labib\portable\KML Converter\bin\Debug\net8.0-windows\GISUniversalConverterPro.exe
+D:\labib\portable\KML Converter\bin\Debug\net8.0-windows\GISUniversalConverterPro.deps.json
+D:\labib\portable\KML Converter\bin\Debug\net8.0-windows\GISUniversalConverterPro.runtimeconfig.json
+D:\labib\portable\KML Converter\bin\Debug\net8.0-windows\GISUniversalConverterPro.dll
+D:\labib\portable\KML Converter\bin\Debug\net8.0-windows\GISUniversalConverterPro.pdb
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\GISUniversalConverterPro.dll
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\refint\GISUniversalConverterPro.dll
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\GISUniversalConverterPro.pdb
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\ref\GISUniversalConverterPro.dll
+D:\labib\portable\KML Converter\obj\Debug\net8.0-windows\KML Converter.csproj.AssemblyReference.cache

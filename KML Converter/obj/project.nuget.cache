@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "dgSpecHash": "xDhcQZgeaLs=",
+  "success": true,
+  "projectFilePath": "D:\\labib\\portable\\KML Converter\\KML Converter.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Admin\\.nuget\\packages\\maxrev.gdal.core\\3.9.3.266\\maxrev.gdal.core.3.9.3.266.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "GISUniversalConverterPro depends on MaxRev.Gdal.Core (>= 3.9.3) but MaxRev.Gdal.Core 3.9.3 was not found. MaxRev.Gdal.Core 3.9.3.266 was resolved instead.",
+      "projectPath": "D:\\labib\\portable\\KML Converter\\KML Converter.csproj",
+      "warningLevel": 1,
+      "filePath": "D:\\labib\\portable\\KML Converter\\KML Converter.csproj",
+      "libraryId": "MaxRev.Gdal.Core",
+      "targetGraphs": [
+        "net8.0-windows"
+      ]
+    }
+  ]
+}
