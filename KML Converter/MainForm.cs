@@ -25,9 +25,9 @@ namespace GISUniversalConverterPro
 
         public MainForm()
         {
-            _arcGISDetector = new ArcGISDetector();
             _settingsService = new SettingsService();
             _loggingService = new LoggingService();
+            _arcGISDetector = new ArcGISDetector(_loggingService);
             _outputService = new OutputService();
             _conversionManager = new ConversionManager(_loggingService);
 
@@ -41,16 +41,16 @@ namespace GISUniversalConverterPro
             var outputDirectory = _outputService.EnsureOutputDirectory(_settings.OutputDirectory);
             SetOutputDirectory(outputDirectory, save: false);
 
-            var isArcGISInstalled = _arcGISDetector.IsArcGISInstalled();
-            UpdateEngineStatus(isArcGISInstalled);
+            var arcGISDetection = _arcGISDetector.Detect();
+            UpdateEngineStatus(arcGISDetection.CanUseArcGISEngine);
             UpdateStatus("جاهز");
             UpdateStatusStrip();
             AppendLog($"{ApplicationConstants.ApplicationName} initialized.");
         }
 
-        private void UpdateEngineStatus(bool isArcGISInstalled)
+        private void UpdateEngineStatus(bool canUseArcGISEngine)
         {
-            _engineName = _settings.UseArcGISIfAvailable && isArcGISInstalled ? "ArcGIS Pro" : "Internal";
+            _engineName = _settings.UseArcGISIfAvailable && canUseArcGISEngine ? "ArcGIS Pro" : "Internal";
             statusLabel.Text = $"{ApplicationConstants.ApplicationName} • Engine: {_engineName}";
             _loggingService.Log($"Engine status initialized: {_engineName}");
         }
