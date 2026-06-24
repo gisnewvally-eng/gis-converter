@@ -16,9 +16,12 @@ namespace GISUniversalConverterPro
         private readonly SettingsService _settingsService;
         private readonly LoggingService _loggingService;
         private readonly OutputService _outputService;
+        private readonly ConversionManager _conversionManager;
         private ApplicationSettings _settings = new();
         private string _outputDirectory = string.Empty;
         private string _engineName = "Internal";
+        private CancellationTokenSource? _conversionCancellationTokenSource;
+        private bool _isConverting;
 
         public MainForm()
         {
@@ -26,6 +29,7 @@ namespace GISUniversalConverterPro
             _settingsService = new SettingsService();
             _loggingService = new LoggingService();
             _outputService = new OutputService();
+            _conversionManager = new ConversionManager(_loggingService);
 
             InitializeComponent();
             InitializeApplication();
@@ -202,26 +206,96 @@ namespace GISUniversalConverterPro
             }
         }
 
-        private void ConvertFiles()
+        private async Task ConvertFilesAsync()
         {
+            if (_isConverting)
+            {
+                return;
+            }
+
             if (_jobs.Count == 0)
             {
                 MessageBox.Show(this, "يرجى إضافة ملفات KML أو KMZ أولاً.", ApplicationConstants.ApplicationName, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            AppendLog("Conversion is not implemented yet. File management layer is ready.");
+            _isConverting = true;
+            _conversionCancellationTokenSource = new CancellationTokenSource();
+            SetConversionControlsEnabled(false);
             progressBar.Style = ProgressBarStyle.Blocks;
-            progressBar.Value = 100;
-            UpdateStatus("جاهز للمرحلة التالية");
+            progressBar.Value = 0;
+
+            try
+            {
+                var totalJobs = _jobs.Count;
+                for (var index = 0; index < totalJobs; index++)
+                {
+                    var job = _jobs[index];
+                    if (_conversionCancellationTokenSource.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    job.OutputDirectory = _outputDirectory;
+                    job.UseArcGISIfAvailable = _settings.UseArcGISIfAvailable;
+                    UpdateJobStatus(job, "Converting");
+                    AppendLog($"Starting conversion for {job.FileName}.");
+
+                    var result = await _conversionManager.RunAsync(
+                        job,
+                        _conversionCancellationTokenSource.Token,
+                        (percent, message) => BeginInvoke(new Action(() =>
+                        {
+                            var overallPercent = CalculateOverallProgress(index, totalJobs, percent);
+                            progressBar.Value = Math.Clamp(overallPercent, progressBar.Minimum, progressBar.Maximum);
+                            UpdateStatus(message);
+                            AppendLog(message);
+                        })));
+
+                    if (result.Success)
+                    {
+                        UpdateJobStatus(job, "Completed");
+                        AppendLog($"Completed conversion for {job.FileName} in {result.Duration.TotalSeconds:N1} seconds.");
+                    }
+                    else if (_conversionCancellationTokenSource.IsCancellationRequested)
+                    {
+                        UpdateJobStatus(job, "Cancelled");
+                        AppendLog($"Cancelled conversion for {job.FileName}.");
+                        break;
+                    }
+                    else
+                    {
+                        UpdateJobStatus(job, "Failed");
+                        AppendLog($"Failed conversion for {job.FileName}: {result.ErrorMessage}");
+                    }
+                }
+
+                progressBar.Value = _conversionCancellationTokenSource.IsCancellationRequested ? 0 : 100;
+                UpdateStatus(_conversionCancellationTokenSource.IsCancellationRequested ? "تم إلغاء العملية" : "اكتملت عملية التحويل");
+            }
+            finally
+            {
+                _conversionCancellationTokenSource?.Dispose();
+                _conversionCancellationTokenSource = null;
+                _isConverting = false;
+                SetConversionControlsEnabled(true);
+                UpdateStatusStrip();
+            }
         }
 
         private void CancelConversion()
         {
-            progressBar.Style = ProgressBarStyle.Blocks;
-            progressBar.Value = 0;
-            UpdateStatus("تم إلغاء العملية");
-            AppendLog("Conversion cancelled by the user.");
+            if (!_isConverting || _conversionCancellationTokenSource is null)
+            {
+                progressBar.Style = ProgressBarStyle.Blocks;
+                progressBar.Value = 0;
+                UpdateStatus("لا توجد عملية تحويل نشطة");
+                return;
+            }
+
+            _conversionCancellationTokenSource.Cancel();
+            UpdateStatus("جارٍ إلغاء العملية...");
+            AppendLog("Conversion cancellation requested by the user.");
         }
 
         private void OpenOutputFolder()
@@ -247,6 +321,46 @@ namespace GISUniversalConverterPro
         {
             totalFilesStatusLabel.Text = $"Total Files: {_jobs.Count}";
             readyFilesStatusLabel.Text = $"Ready Files: {_jobs.Count(job => string.Equals(job.Status, "Ready", StringComparison.OrdinalIgnoreCase))}";
+        }
+
+        private static int CalculateOverallProgress(int jobIndex, int totalJobs, int jobPercent)
+        {
+            if (totalJobs <= 0)
+            {
+                return 0;
+            }
+
+            return ((jobIndex * 100) + Math.Clamp(jobPercent, 0, 100)) / totalJobs;
+        }
+
+        private void UpdateJobStatus(ConversionJob job, string status)
+        {
+            job.Status = status;
+            foreach (ListViewItem item in filesListView.Items)
+            {
+                if (ReferenceEquals(item.Tag, job))
+                {
+                    item.SubItems[2].Text = status;
+                    break;
+                }
+            }
+
+            UpdateStatusStrip();
+        }
+
+        private void SetConversionControlsEnabled(bool enabled)
+        {
+            addFilesButton.Enabled = enabled;
+            removeButton.Enabled = enabled;
+            clearButton.Enabled = enabled;
+            browseOutputButton.Enabled = enabled;
+            convertButton.Enabled = enabled;
+            addFilesToolStripButton.Enabled = enabled;
+            browseOutputToolStripButton.Enabled = enabled;
+            convertToolStripButton.Enabled = enabled;
+            addFilesMenuItem.Enabled = enabled;
+            browseOutputMenuItem.Enabled = enabled;
+            convertMenuItem.Enabled = enabled;
         }
 
         private void UpdateStatus(string message)
@@ -302,18 +416,18 @@ namespace GISUniversalConverterPro
         private void removeButton_Click(object sender, EventArgs e) => RemoveSelectedFiles();
         private void clearButton_Click(object sender, EventArgs e) => ClearFiles();
         private void browseOutputButton_Click(object sender, EventArgs e) => BrowseOutputDirectory();
-        private void convertButton_Click(object sender, EventArgs e) => ConvertFiles();
+        private async void convertButton_Click(object sender, EventArgs e) => await ConvertFilesAsync();
         private void cancelButton_Click(object sender, EventArgs e) => CancelConversion();
         private void openOutputFolderButton_Click(object sender, EventArgs e) => OpenOutputFolder();
 
         private void addFilesToolStripButton_Click(object sender, EventArgs e) => AddFiles();
         private void browseOutputToolStripButton_Click(object sender, EventArgs e) => BrowseOutputDirectory();
-        private void convertToolStripButton_Click(object sender, EventArgs e) => ConvertFiles();
+        private async void convertToolStripButton_Click(object sender, EventArgs e) => await ConvertFilesAsync();
         private void cancelToolStripButton_Click(object sender, EventArgs e) => CancelConversion();
 
         private void addFilesMenuItem_Click(object sender, EventArgs e) => AddFiles();
         private void browseOutputMenuItem_Click(object sender, EventArgs e) => BrowseOutputDirectory();
-        private void convertMenuItem_Click(object sender, EventArgs e) => ConvertFiles();
+        private async void convertMenuItem_Click(object sender, EventArgs e) => await ConvertFilesAsync();
         private void openOutputFolderMenuItem_Click(object sender, EventArgs e) => OpenOutputFolder();
         private void exitMenuItem_Click(object sender, EventArgs e) => Close();
         private void aboutMenuItem_Click(object sender, EventArgs e) => MessageBox.Show(this, $"{ApplicationConstants.ApplicationName}\nتحويل ملفات GIS عبر محركات داخلية أو ArcGIS Pro", "حول التطبيق", MessageBoxButtons.OK, MessageBoxIcon.Information);
