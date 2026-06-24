@@ -2,7 +2,10 @@ using System.IO;
 using GISUniversalConverterPro.Converters;
 using GISUniversalConverterPro.Interfaces;
 using GISUniversalConverterPro.Models;
+using GISUniversalConverterPro.Services;
 using MaxRev.Gdal.Core;
+using OSGeo.OGR;
+using OSGeo.OSR;
 
 namespace GISUniversalConverterPro.Engines
 {
@@ -21,7 +24,14 @@ namespace GISUniversalConverterPro.Engines
 
         public void Initialize()
         {
-            GdalBase.ConfigureAll();
+            try
+            {
+                GdalBase.ConfigureAll();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to initialize the bundled GDAL runtime. Verify that the GDAL runtime package is deployed for win-x64.", ex);
+            }
         }
 
         public void Convert()
@@ -43,7 +53,7 @@ namespace GISUniversalConverterPro.Engines
             }
 
             var inputPath = Path.GetFullPath(Job.FullPath);
-            var outputRoot = EnsureOutputDirectory(Job.OutputDirectory);
+            var outputRoot = OutputService.EnsureWritableOutputDirectory(Job.OutputDirectory);
             var safeName = SanitizeFileName(Path.GetFileNameWithoutExtension(Job.FullPath));
             var outputDirectory = Path.Combine(outputRoot, safeName);
             Directory.CreateDirectory(outputDirectory);
@@ -122,17 +132,6 @@ namespace GISUniversalConverterPro.Engines
         {
             _cancellationToken = cancellationToken;
             _cancelRequested = false;
-        }
-
-        private static string EnsureOutputDirectory(string outputDirectory)
-        {
-            if (string.IsNullOrWhiteSpace(outputDirectory))
-            {
-                outputDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GIS Universal Converter Pro");
-            }
-
-            Directory.CreateDirectory(outputDirectory);
-            return Path.GetFullPath(outputDirectory);
         }
 
         private static string SanitizeFileName(string value)

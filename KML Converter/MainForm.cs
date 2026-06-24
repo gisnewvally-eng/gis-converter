@@ -38,6 +38,7 @@ namespace GISUniversalConverterPro
         private void InitializeApplication()
         {
             _settings = _settingsService.Load();
+            _loggingService.IsEnabled = _settings.EnableLogging;
             var outputDirectory = _outputService.EnsureOutputDirectory(_settings.OutputDirectory);
             SetOutputDirectory(outputDirectory, save: false);
 

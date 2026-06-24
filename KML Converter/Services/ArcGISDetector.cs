@@ -139,17 +139,15 @@ namespace GISUniversalConverterPro.Services
                 };
 
                 process.Start();
-                var output = process.StandardOutput.ReadToEnd();
-                var error = process.StandardError.ReadToEnd();
-                process.WaitForExit(30000);
-
-                if (!process.HasExited)
+                if (!process.WaitForExit(30000))
                 {
                     process.Kill(true);
                     _loggingService?.Log("ArcPy detection timed out.");
                     return false;
                 }
 
+                var output = process.StandardOutput.ReadToEnd();
+                var error = process.StandardError.ReadToEnd();
                 var isAvailable = process.ExitCode == 0 && output.Contains("arcpy-ok", StringComparison.OrdinalIgnoreCase);
                 if (!isAvailable)
                 {

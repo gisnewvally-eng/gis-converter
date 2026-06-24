@@ -44,7 +44,7 @@ namespace GISUniversalConverterPro.Engines
 
             ThrowIfCancellationRequested();
             var scriptPath = GetScriptPath();
-            var outputDirectory = EnsureOutputDirectory(Job.OutputDirectory);
+            var outputDirectory = OutputService.EnsureWritableOutputDirectory(Job.OutputDirectory);
             var outputName = string.IsNullOrWhiteSpace(Job.OutputName)
                 ? Path.GetFileNameWithoutExtension(Job.FullPath)
                 : Job.OutputName;
@@ -73,19 +73,25 @@ namespace GISUniversalConverterPro.Engines
             process.OutputDataReceived += (_, args) => HandleProcessOutput(args.Data, isError: false);
             process.ErrorDataReceived += (_, args) => HandleProcessOutput(args.Data, isError: true);
 
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            while (!process.WaitForExit(250))
+            try
             {
-                ThrowIfCancellationRequested();
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                while (!process.WaitForExit(250))
+                {
+                    ThrowIfCancellationRequested();
+                }
+
+                if (process.ExitCode != 0)
+                {
+                    throw new InvalidOperationException($"ArcGIS conversion failed with exit code {process.ExitCode}.");
+                }
             }
-
-            _activeProcess = null;
-            if (process.ExitCode != 0)
+            finally
             {
-                throw new InvalidOperationException($"ArcGIS conversion failed with exit code {process.ExitCode}.");
+                _activeProcess = null;
             }
 
             ReportProgress(100, "ArcGIS Pro conversion completed successfully.");
@@ -143,22 +149,10 @@ namespace GISUniversalConverterPro.Engines
             _cancellationToken = cancellationToken;
         }
 
-        private static string EnsureOutputDirectory(string outputDirectory)
-        {
-            if (string.IsNullOrWhiteSpace(outputDirectory))
-            {
-                outputDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GIS Universal Converter Pro");
-            }
-
-            Directory.CreateDirectory(outputDirectory);
-            return Path.GetFullPath(outputDirectory);
-        }
-
         private static string GetScriptPath()
         {
             return Path.Combine(AppContext.BaseDirectory, "Python", "arcgis_kml_to_layer.py");
         }
-
 
         private void HandleProcessOutput(string? data, bool isError)
         {
