@@ -78,7 +78,7 @@ namespace GISUniversalConverterPro.Engines
                     throw new OperationCanceledException(_cancellationToken);
                 }
 
-                using var layer = dataSource.GetLayer(index);
+                using var layer = dataSource.GetLayerByIndex(index);
                 if (layer is null)
                 {
                     continue;
@@ -150,7 +150,7 @@ namespace GISUniversalConverterPro.Engines
         {
             var outputPath = $"{outputBaseName}.shp";
             var driver = Ogr.GetDriverByName("ESRI Shapefile");
-            using var outputDataSource = driver.CreateDataSource(outputPath);
+            using var outputDataSource = driver.CreateDataSource(outputPath, Array.Empty<string>());
             using var outputLayer = outputDataSource.CreateLayer(Path.GetFileNameWithoutExtension(outputPath), CreateSpatialReference(), layer.GetGeomType(), null);
             CopyLayerSchema(layer, outputLayer);
             CopyFeatures(layer, outputLayer);
@@ -160,7 +160,7 @@ namespace GISUniversalConverterPro.Engines
         {
             var outputPath = $"{outputBaseName}.gpkg";
             var driver = Ogr.GetDriverByName("GPKG");
-            using var outputDataSource = driver.CreateDataSource(outputPath);
+            using var outputDataSource = driver.CreateDataSource(outputPath, Array.Empty<string>());
             using var outputLayer = outputDataSource.CreateLayer(Path.GetFileNameWithoutExtension(outputPath), CreateSpatialReference(), layer.GetGeomType(), null);
             CopyLayerSchema(layer, outputLayer);
             CopyFeatures(layer, outputLayer);
@@ -170,7 +170,7 @@ namespace GISUniversalConverterPro.Engines
         {
             var outputPath = $"{outputBaseName}.geojson";
             var driver = Ogr.GetDriverByName("GeoJSON");
-            using var outputDataSource = driver.CreateDataSource(outputPath);
+            using var outputDataSource = driver.CreateDataSource(outputPath, Array.Empty<string>());
             using var outputLayer = outputDataSource.CreateLayer(Path.GetFileNameWithoutExtension(outputPath), CreateSpatialReference(), layer.GetGeomType(), null);
             CopyLayerSchema(layer, outputLayer);
             CopyFeatures(layer, outputLayer);
@@ -178,7 +178,7 @@ namespace GISUniversalConverterPro.Engines
 
         private static SpatialReference CreateSpatialReference()
         {
-            var spatialReference = new SpatialReference();
+            var spatialReference = new SpatialReference(string.Empty);
             spatialReference.ImportFromEPSG(4326);
             return spatialReference;
         }
