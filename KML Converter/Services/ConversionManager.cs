@@ -9,18 +9,34 @@ namespace GISUniversalConverterPro.Services
     /// </summary>
     public sealed class ConversionManager
     {
-        private readonly ArcGISEngine _arcGisEngine = new();
+        private readonly ArcGISEngine _arcGisEngine;
         private readonly InternalEngine _internalEngine = new();
         private readonly LoggingService? _loggingService;
 
         public ConversionManager(LoggingService? loggingService = null)
         {
             _loggingService = loggingService;
+            _arcGisEngine = new ArcGISEngine(loggingService);
         }
 
         public IConversionEngine GetActiveEngine(bool preferArcGIS)
         {
-            return preferArcGIS && _arcGisEngine.IsAvailable ? _arcGisEngine : _internalEngine;
+            if (preferArcGIS && _arcGisEngine.IsAvailable)
+            {
+                _loggingService?.Log("ArcGIS Pro engine selected.");
+                return _arcGisEngine;
+            }
+
+            if (preferArcGIS)
+            {
+                _loggingService?.Log("ArcGIS Pro engine is unavailable; falling back to internal engine.");
+            }
+            else
+            {
+                _loggingService?.Log("Internal engine selected by settings.");
+            }
+
+            return _internalEngine;
         }
 
         public async Task<ConversionResult> RunAsync(ConversionJob job, CancellationToken cancellationToken, Action<int, string>? progressReporter = null, LoggingService? loggingService = null)
@@ -42,6 +58,12 @@ namespace GISUniversalConverterPro.Services
                     internalEngine.Job = job;
                     internalEngine.ProgressReporter = progressReporter;
                     internalEngine.SetCancellationToken(cancellationToken);
+                }
+                else if (engine is ArcGISEngine arcGisEngine)
+                {
+                    arcGisEngine.Job = job;
+                    arcGisEngine.ProgressReporter = progressReporter;
+                    arcGisEngine.SetCancellationToken(cancellationToken);
                 }
 
                 engine.Initialize();

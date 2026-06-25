@@ -6,6 +6,8 @@ namespace GISUniversalConverterPro.Services
     {
         private readonly string _logPath;
 
+        public bool IsEnabled { get; set; } = true;
+
         public LoggingService()
         {
             var directory = Path.Combine(AppContext.BaseDirectory, "Logs");
@@ -15,12 +17,19 @@ namespace GISUniversalConverterPro.Services
 
         public void Log(string message)
         {
-            if (string.IsNullOrWhiteSpace(message))
+            if (!IsEnabled || string.IsNullOrWhiteSpace(message))
             {
                 return;
             }
 
-            File.AppendAllText(_logPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+            try
+            {
+                File.AppendAllText(_logPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}{Environment.NewLine}");
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException || ex is DirectoryNotFoundException)
+            {
+                System.Diagnostics.Debug.WriteLine($"Logging failed: {ex.Message}");
+            }
         }
     }
 }

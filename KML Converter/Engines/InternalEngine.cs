@@ -2,7 +2,10 @@ using System.IO;
 using GISUniversalConverterPro.Converters;
 using GISUniversalConverterPro.Interfaces;
 using GISUniversalConverterPro.Models;
+using GISUniversalConverterPro.Services;
 using MaxRev.Gdal.Core;
+using OSGeo.OGR;
+using OSGeo.OSR;
 
 namespace GISUniversalConverterPro.Engines
 {
@@ -21,7 +24,14 @@ namespace GISUniversalConverterPro.Engines
 
         public void Initialize()
         {
-            GdalBase.ConfigureAll();
+            try
+            {
+                GdalBase.ConfigureAll();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to initialize the bundled GDAL runtime. Verify that the GDAL runtime package is deployed for win-x64.", ex);
+            }
         }
 
         public void Convert()
@@ -43,7 +53,7 @@ namespace GISUniversalConverterPro.Engines
             }
 
             var inputPath = Path.GetFullPath(Job.FullPath);
-            var outputRoot = EnsureOutputDirectory(Job.OutputDirectory);
+            var outputRoot = OutputService.EnsureWritableOutputDirectory(Job.OutputDirectory);
             var safeName = SanitizeFileName(Path.GetFileNameWithoutExtension(Job.FullPath));
             var outputDirectory = Path.Combine(outputRoot, safeName);
             Directory.CreateDirectory(outputDirectory);
@@ -68,7 +78,7 @@ namespace GISUniversalConverterPro.Engines
                     throw new OperationCanceledException(_cancellationToken);
                 }
 
-                using var layer = dataSource.GetLayer(index);
+                using var layer = dataSource.GetLayerByIndex(index);
                 if (layer is null)
                 {
                     continue;
@@ -124,17 +134,6 @@ namespace GISUniversalConverterPro.Engines
             _cancelRequested = false;
         }
 
-        private static string EnsureOutputDirectory(string outputDirectory)
-        {
-            if (string.IsNullOrWhiteSpace(outputDirectory))
-            {
-                outputDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GIS Universal Converter Pro");
-            }
-
-            Directory.CreateDirectory(outputDirectory);
-            return Path.GetFullPath(outputDirectory);
-        }
-
         private static string SanitizeFileName(string value)
         {
             var invalidChars = Path.GetInvalidFileNameChars();
@@ -151,7 +150,7 @@ namespace GISUniversalConverterPro.Engines
         {
             var outputPath = $"{outputBaseName}.shp";
             var driver = Ogr.GetDriverByName("ESRI Shapefile");
-            using var outputDataSource = driver.CreateDataSource(outputPath);
+            using var outputDataSource = driver.CreateDataSource(outputPath, Array.Empty<string>());
             using var outputLayer = outputDataSource.CreateLayer(Path.GetFileNameWithoutExtension(outputPath), CreateSpatialReference(), layer.GetGeomType(), null);
             CopyLayerSchema(layer, outputLayer);
             CopyFeatures(layer, outputLayer);
@@ -161,7 +160,7 @@ namespace GISUniversalConverterPro.Engines
         {
             var outputPath = $"{outputBaseName}.gpkg";
             var driver = Ogr.GetDriverByName("GPKG");
-            using var outputDataSource = driver.CreateDataSource(outputPath);
+            using var outputDataSource = driver.CreateDataSource(outputPath, Array.Empty<string>());
             using var outputLayer = outputDataSource.CreateLayer(Path.GetFileNameWithoutExtension(outputPath), CreateSpatialReference(), layer.GetGeomType(), null);
             CopyLayerSchema(layer, outputLayer);
             CopyFeatures(layer, outputLayer);
@@ -171,7 +170,7 @@ namespace GISUniversalConverterPro.Engines
         {
             var outputPath = $"{outputBaseName}.geojson";
             var driver = Ogr.GetDriverByName("GeoJSON");
-            using var outputDataSource = driver.CreateDataSource(outputPath);
+            using var outputDataSource = driver.CreateDataSource(outputPath, Array.Empty<string>());
             using var outputLayer = outputDataSource.CreateLayer(Path.GetFileNameWithoutExtension(outputPath), CreateSpatialReference(), layer.GetGeomType(), null);
             CopyLayerSchema(layer, outputLayer);
             CopyFeatures(layer, outputLayer);
@@ -179,7 +178,7 @@ namespace GISUniversalConverterPro.Engines
 
         private static SpatialReference CreateSpatialReference()
         {
-            var spatialReference = new SpatialReference();
+            var spatialReference = new SpatialReference(string.Empty);
             spatialReference.ImportFromEPSG(4326);
             return spatialReference;
         }
